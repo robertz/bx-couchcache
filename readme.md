@@ -96,6 +96,14 @@ Rate-limit counters are a read followed by a write, so two instances counting th
 
 Caches with the same connection string, credentials and bucket share one Couchbase connection, which closes when the last of them shuts down. Caches on different buckets get a connection each: a connection asked to open a bucket that doesn't exist stops serving its other buckets, so one misconfigured cache would otherwise break the rest.
 
+## Security
+
+- **Treat the bucket's credentials like access to the app server.** Entries are read back with Java deserialization, and BoxLang's deserializer accepts any class. Anyone who can write a document under a cache's prefix can make the application run code the next time that key is read. Give the cache its own bucket (or scope) and user, and don't share it with writers you don't trust.
+- **Use `couchbases://` when the network isn't private.** With `couchbase://` the password is protected by the login handshake, but everything stored, session contents included, crosses the network unencrypted.
+- **Prefixes are plain string prefixes, not a boundary.** A cache whose `keyPrefix` is the start of another's (`app:` and `app:cart:`) lists and clears the other's entries. Lock documents are stored under `lock:<keyPrefix>`, so don't name a cache `lock` or give one a `keyPrefix` starting with `lock:` in a collection other caches use.
+- **Don't build cache keys from unchecked request input.** Couchbase rejects document ids longer than 250 bytes, so an oversized key throws instead of missing.
+- **A lock is not a fence.** A holder that runs past its lock's expiry keeps running while another node takes the lock. Lock names are case-sensitive, unlike cache keys.
+
 ## Differences from BoxCacheProvider
 
 - **Couchbase handles expiry.** There's no reaper task, no eviction, and `maxObjects` is ignored.

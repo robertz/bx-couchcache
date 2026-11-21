@@ -1,7 +1,11 @@
 package com.kisdigital.couchcache;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -157,7 +161,8 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 	 * a Cluster that has been asked to open a bucket that doesn't exist stops serving its other buckets.
 	 */
 	private static synchronized Cluster acquireCluster( String connectionString, String username, String password, String bucketName ) {
-		String	key		= connectionString + "\n" + username + "\n" + password + "\n" + bucketName;
+		// Hashed so the password isn't kept in memory as part of a map key
+		String	key		= sha256( connectionString + "\n" + username + "\n" + password + "\n" + bucketName );
 		Cluster	shared	= CLUSTERS.get( key );
 		if ( shared == null ) {
 			shared = Cluster.connect( connectionString, ClusterOptions.clusterOptions( username, password ) );
@@ -619,6 +624,14 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 			return ( ICacheEntry ) ObjectMarshaller.deserialize( this.context, result.contentAs( byte[].class ) );
 		} catch ( DocumentNotFoundException e ) {
 			return null;
+		}
+	}
+
+	private static String sha256( String value ) {
+		try {
+			return HexFormat.of().formatHex( MessageDigest.getInstance( "SHA-256" ).digest( value.getBytes( StandardCharsets.UTF_8 ) ) );
+		} catch ( NoSuchAlgorithmException e ) {
+			throw new IllegalStateException( e );
 		}
 	}
 

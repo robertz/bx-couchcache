@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-21
+
+### Changed
+
+* The shared-connection lookup key is hashed, so the password is no longer held in memory as part of it
+* Readme: a Security section (deserialization trust, TLS, prefix overlap, key length, lock limits)
+
 ## [0.1.1] - 2026-11-21
 
 ### Fixed
