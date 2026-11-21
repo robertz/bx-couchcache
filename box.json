@@ -1,5 +1,5 @@
 {
-	"name": "BoxLang Couchbase Cache",
+	"name": "bx-couchcache",
 	"version": "@build.version@",
 	"location": "forgeboxStorage",
 	"author": "Robert Zehnder",
