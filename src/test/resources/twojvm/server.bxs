@@ -1,0 +1,42 @@
+// One BoxExpress node for TwoJvmIntegrationTest. Started twice, as separate JVMs, against the same Couchbase bucket.
+cacheService().createCache( "trial", "CouchCache", {
+	connectionString : getSystemSetting( "CB_CONNECTION" ),
+	username         : getSystemSetting( "CB_USERNAME" ),
+	password         : getSystemSetting( "CB_PASSWORD" ),
+	bucket           : getSystemSetting( "CB_BUCKET" )
+} )
+
+app = boxExpress()
+app.set( "log", false )
+app.set( "cluster", {
+	enabled                : true,
+	name                   : getSystemSetting( "NODE_NAME" ),
+	cacheProvider          : "trial",
+	peerIdleTimeoutSeconds : 2
+} )
+
+app.use( boxExpressSession( { cache: "trial", requireDurable: true, fallback: false, resave: false, saveUninitialized: false } ) )
+app.use( "/limited", boxExpressRateLimit( { max: 3, windowMs: 60000, cache: "trial", requireDurable: true, fallback: false } ) )
+
+app.get( "/write", ( req, res ) => {
+	req.session.user = "ada"
+	res.json( { "node": getSystemSetting( "NODE_NAME" ) } )
+} )
+app.get( "/read", ( req, res ) => res.json( { "user": req.session.user ?: "MISSING", "node": getSystemSetting( "NODE_NAME" ) } ) )
+app.get( "/limited", ( req, res ) => res.json( { "ok": true } ) )
+app.get( "/members", ( req, res ) => res.json( { "members": app.getClusterManager().getClusterMembers() } ) )
+app.get( "/put", ( req, res ) => {
+	cache( "trial" ).set( req.query.key, req.query.value, 600 )
+	res.json( { "ok": true } )
+} )
+app.get( "/keys", ( req, res ) => res.json( { "keys": cache( "trial" ).getKeys() } ) )
+app.get( "/lock", ( req, res ) => {
+	var acquired = false
+	lock name="two-jvm" cacheName="trial" timeout=( req.query.timeout ?: 1 ) throwOnTimeout=false {
+		acquired = true
+		sleep( req.query.hold ?: 0 )
+	}
+	res.json( { "acquired": acquired } )
+} )
+
+app.listen( getSystemSetting( "PORT" ) )

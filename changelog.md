@@ -15,11 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `getObjectStore()` returns a delegating object store that reports `isDistributed() == true`, so BoxExpress accepts the cache as durable for sessions
 * Range scans are consistent with the provider's own writes, so `getKeys`, `getSize` and `clearAll` no longer miss a key written just before
 * BoxExpress integration tests: sessions (including over HTTP), rate limiting and cluster mode
+* Two-JVM BoxExpress integration test (sessions, rate limiting, cluster members, key listing and `bx:lock` across processes)
 * Outage and startup-failure tests; the suite also passes on Couchbase Server 7.6.2
 * Testcontainers integration tests for caching, expiry, key prefixes, serialization, sessions and locks
 
 ### Changed
 
+* Caches with the same connection string, credentials and bucket share one Couchbase connection
+* Range scans use the KV timeout instead of the SDK's 75 second default
 * `set()` only does its insert-or-update lookup when an interceptor listens for those events
 * `./gradlew shadowJar` on its own now includes the ServiceLoader registration
 * Pinned the Couchbase Java SDK to 3.13.1

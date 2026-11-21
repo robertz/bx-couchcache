@@ -1,6 +1,8 @@
 package com.kisdigital.couchcache;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -67,24 +69,28 @@ import ortus.boxlang.runtime.util.conversion.ObjectMarshaller;
     "distributed" } )
 public class CouchCacheProvider extends AbstractCacheProvider implements ILockableCacheProvider {
 
-	private static final Duration	LOCK_RETRY_SLEEP	= Duration.ofMillis( 50 );
+	private static final Duration				LOCK_RETRY_SLEEP	= Duration.ofMillis( 50 );
 
-	private Cluster					cluster;
-	private Collection				collection;
-	private IBoxContext				context;
-	private String					keyPrefix;
-	private String					lockPrefix;
-	private Duration				defaultTimeout;
-	private Duration				defaultLastAccessTimeout;
-	private boolean					resetTimeoutOnAccess;
-	private IObjectStore			objectStore;
+	private static final Map<String, Cluster>	CLUSTERS			= new HashMap<>();
+	private static final Map<Cluster, Integer>	CLUSTER_USERS		= new HashMap<>();
+
+	private Cluster								cluster;
+	private Duration							scanTimeout;
+	private Collection							collection;
+	private IBoxContext							context;
+	private String								keyPrefix;
+	private String								lockPrefix;
+	private Duration							defaultTimeout;
+	private Duration							defaultLastAccessTimeout;
+	private boolean								resetTimeoutOnAccess;
+	private IObjectStore						objectStore;
 
 	/**
 	 * Highest mutation token per vbucket for this provider's own writes. Range scans are made
 	 * consistent with it, so getKeys/getSize/clearAll always see what this node just wrote.
 	 * A write from another node can still be a few milliseconds behind.
 	 */
-	private volatile MutationState	mutations;
+	private volatile MutationState				mutations;
 
 	/*
 	 * ------------------------------------------------------------------
@@ -100,21 +106,18 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 		// Read before connecting, so a missing property can't leave a connection behind
 		String	bucketName	= required( props, "bucket" );
 
-		// TODO: one Cluster per cache. Fine for two or three caches; share a Cluster
-		// (keyed by connectionString+username) if you end up with many.
-		this.cluster = Cluster.connect(
-		    required( props, "connectionString" ),
-		    ClusterOptions.clusterOptions( required( props, "username" ), required( props, "password" ) )
-		);
+		this.cluster = acquireCluster( required( props, "connectionString" ), required( props, "username" ), required( props, "password" ), bucketName );
 		Bucket bucket = this.cluster.bucket( bucketName );
 		try {
 			bucket.waitUntilReady( Duration.ofSeconds( intProp( props, "connectTimeout", 10 ) ) );
 		} catch ( RuntimeException e ) {
 			// Otherwise the failed cache leaves a connected Cluster retrying in the background forever
-			this.cluster.disconnect();
+			releaseCluster( this.cluster );
 			this.cluster = null;
 			throw e;
 		}
+		// A range scan's own default is 75 seconds, which is a long time for getKeys() to hang during an outage
+		this.scanTimeout				= this.cluster.environment().timeoutConfig().kvTimeout();
 
 		this.collection					= bucket
 		    .scope( stringProp( props, "scope", "_default" ) )
@@ -142,7 +145,32 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 	public void shutdown() {
 		this.enabled.set( false );
 		if ( this.cluster != null ) {
-			this.cluster.disconnect();
+			releaseCluster( this.cluster );
+			this.cluster = null;
+		}
+	}
+
+	/**
+	 * Caches with the same connection string, credentials and bucket share one Cluster. It is
+	 * disconnected when the last cache using it shuts down. The bucket is part of the key on purpose:
+	 * a Cluster that has been asked to open a bucket that doesn't exist stops serving its other buckets.
+	 */
+	private static synchronized Cluster acquireCluster( String connectionString, String username, String password, String bucketName ) {
+		String	key		= connectionString + "\n" + username + "\n" + password + "\n" + bucketName;
+		Cluster	shared	= CLUSTERS.get( key );
+		if ( shared == null ) {
+			shared = Cluster.connect( connectionString, ClusterOptions.clusterOptions( username, password ) );
+			CLUSTERS.put( key, shared );
+		}
+		CLUSTER_USERS.merge( shared, 1, Integer::sum );
+		return shared;
+	}
+
+	private static synchronized void releaseCluster( Cluster shared ) {
+		if ( CLUSTER_USERS.merge( shared, -1, Integer::sum ) <= 0 ) {
+			CLUSTER_USERS.remove( shared );
+			CLUSTERS.values().remove( shared );
+			shared.disconnect();
 		}
 	}
 
@@ -391,7 +419,8 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 	@Override
 	public Stream<String> getKeysStream() {
 		return this.collection
-		    .scan( ScanType.prefixScan( this.keyPrefix ), ScanOptions.scanOptions().idsOnly( true ).consistentWith( this.mutations ) )
+		    .scan( ScanType.prefixScan( this.keyPrefix ),
+		        ScanOptions.scanOptions().idsOnly( true ).consistentWith( this.mutations ).timeout( this.scanTimeout ) )
 		    .map( ScanResult::id )
 		    .map( id -> id.substring( this.keyPrefix.length() ) );
 	}

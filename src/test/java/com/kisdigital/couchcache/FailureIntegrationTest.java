@@ -42,6 +42,8 @@ public class FailureIntegrationTest extends BaseIntegrationTest {
 			assertThat( timed( () -> assertThrows( RuntimeException.class, () -> cache.set( "duringOutage", "x" ) ) ) ).isLessThan( 6000 );
 			assertThat( timed( () -> assertThrows( RuntimeException.class, () -> cache.lookup( "survivor" ) ) ) ).isLessThan( 6000 );
 			assertThat( timed( () -> assertThrows( RuntimeException.class, () -> cache.clear( "doomed" ) ) ) ).isLessThan( 6000 );
+			assertThat( timed( () -> assertThrows( RuntimeException.class, () -> cache.getSize() ) ) ).isLessThan( 6000 );
+			assertThat( timed( () -> assertThrows( RuntimeException.class, () -> cache.getKeys() ) ) ).isLessThan( 6000 );
 			assertThat( timed( () -> assertThrows( RuntimeException.class,
 			    () -> ( ( ILockableCacheProvider ) cache ).acquireLock( "outage-lock", 0, 5000 ) ) ) ).isLessThan( 6000 );
 		} );
@@ -72,6 +74,24 @@ public class FailureIntegrationTest extends BaseIntegrationTest {
 			sleep( 100 );
 		}
 		assertThat( cbThreads() ).isAtMost( threadsBefore + 5 );
+	}
+
+	@DisplayName( "caches share one Couchbase connection, and shutting one cache down leaves the others working" )
+	@Test
+	public void testSharedConnection() {
+		ICacheProvider	keeper			= createCache( "keeper" );
+		long			threadsBefore	= cbThreads();
+		for ( int i = 1; i <= 5; i++ ) {
+			createCache( "extra" + i ).set( "k", i );
+		}
+		assertThat( cbThreads() ).isAtMost( threadsBefore + 5 );
+
+		for ( int i = 1; i <= 5; i++ ) {
+			runtime.getCacheService().shutdownCache( Key.of( "extra" + i ) );
+		}
+		keeper.set( "afterOthersClosed", "ok" );
+		assertThat( keeper.get( "afterOthersClosed" ).get() ).isEqualTo( "ok" );
+		assertThat( cache.lookup( "afterOthersClosed" ) ).isFalse();
 	}
 
 	@DisplayName( "a missing required property is reported by name" )

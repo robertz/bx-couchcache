@@ -80,9 +80,13 @@ Rate-limit counters are a read followed by a write, so two instances counting th
 - Reads, writes, lookups, clears and lock attempts throw after the SDK's KV timeout (2.5 seconds by default). Nothing is retried or served from memory by the provider.
 - A write or clear that timed out was still sent. Couchbase can apply it once it is reachable again, so treat a timed-out write as "maybe".
 - The cache recovers by itself when Couchbase comes back; no restart is needed.
-- `getKeys`, `getSize` and `clearAll` use the SDK's range-scan timeout, which is much longer (75 seconds by default).
+- `getKeys`, `getSize` and `clearAll` use the same KV timeout as everything else, not the SDK's 75 second range-scan default.
 - A cache that can't reach its bucket at startup throws after `connectTimeout`, isn't registered, and closes its connection.
 - BoxExpress sessions with the default `fallback: true` keep working from per-process memory during the outage and go back to Couchbase afterwards. With `fallback: false` a request that reads a session answers 500. A request that only creates a session still answers 200, because BoxExpress logs a failed save and retries it after the response, so that session is lost.
+
+## Connections
+
+Caches with the same connection string, credentials and bucket share one Couchbase connection, which closes when the last of them shuts down. Caches on different buckets get a connection each: a connection asked to open a bucket that doesn't exist stops serving its other buckets, so one misconfigured cache would otherwise break the rest.
 
 ## Differences from BoxCacheProvider
 
@@ -108,6 +112,8 @@ The build pins Couchbase Java SDK 3.13.1. The module jar bundles the SDK; its Ne
 
 ## Tests
 
+Two BoxLang runtimes started at the same instant on one machine intermittently failed to load module jars in testing ("No cache provider with the name [CouchCache] is registered", or BoxExpress's "Cannot load interface class"). Starting them one after the other avoided it. This is the runtime's module loading, not this module, but stagger instance start-up on a shared host.
+
 `./gradlew test` needs Docker. The integration tests start Couchbase Server with Testcontainers, load the built module from `build/module`, and create caches through `CacheService.createCache()` with the `CouchCache` provider. The image defaults to `couchbase/server:community-8.0.2`; set `COUCHBASE_IMAGE` to use another.
 
 Verified by the suite against Couchbase Server Community 8.0.2 and 7.6.2:
@@ -131,6 +137,9 @@ Verified by the suite against Couchbase Server Community 8.0.2 and 7.6.2:
 - outages: with the Couchbase container frozen, every operation fails in under 6 seconds and the cache works again once it is unfrozen; BoxExpress sessions fall back and recover
 - a cache that can't reach its bucket fails within `connectTimeout`, is not registered, and leaves no SDK threads behind
 
+- several caches share one connection, and shutting one down leaves the others working
+- two BoxExpress servers in separate JVMs, each loading the built module from `boxlang_modules`: a session written on one is read on the other, the rate limit is counted across both, each lists the other as a cluster member, a key written on one appears in the other's `getKeys()` (0 of 100 lagged), and `bx:lock cacheName` on one excludes the other
+
 The BoxExpress tests need a checkout at `../boxlang-express` (or `BOXEXPRESS_PATH`) and are skipped without one. They were run against BoxExpress 0.2.29.
 
-Not verified: BoxExpress's clustered scheduler and STOMP relay on this provider, BoxExpress instances in separate JVMs, Couchbase Enterprise Edition, a node failover (the outage tests freeze a single node), multi-node clusters, a real web server request cycle, and behaviour under load.
+Not verified: BoxExpress's clustered scheduler and STOMP relay on this provider, a reverse proxy in front of the instances, Couchbase Enterprise Edition, a node failover (the outage tests freeze a single node), multi-node clusters, a real web server request cycle, and behaviour under load.
