@@ -17,7 +17,7 @@
 		"boxlang"
 	],
 	"boxlang": {
-		"minimumVersion": "1.0.0",
+		"minimumVersion": "1.18.0",
 		"moduleName": "couchcache"
 	},
 	"private": false,

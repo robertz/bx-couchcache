@@ -94,6 +94,15 @@ public class FailureIntegrationTest extends BaseIntegrationTest {
 		assertThat( cache.lookup( "afterOthersClosed" ) ).isFalse();
 	}
 
+	@DisplayName( "a cache pointed at an unreachable host reports the connection failure, not a disconnect timeout" )
+	@Test
+	public void testUnreachableHost() {
+		RuntimeException error = assertThrows( RuntimeException.class,
+		    () -> createCache( "unreachable", "connectionString", "couchbase://127.0.0.1:1", "connectTimeout", 1 ) );
+		assertThat( error.getMessage() ).contains( "WaitUntilReady" );
+		assertThat( runtime.getCacheService().hasCache( Key.of( "unreachable" ) ) ).isFalse();
+	}
+
 	@DisplayName( "a missing required property is reported by name" )
 	@Test
 	public void testMissingProperty() {

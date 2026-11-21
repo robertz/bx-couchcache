@@ -170,7 +170,11 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 		if ( CLUSTER_USERS.merge( shared, -1, Integer::sum ) <= 0 ) {
 			CLUSTER_USERS.remove( shared );
 			CLUSTERS.values().remove( shared );
-			shared.disconnect();
+			try {
+				shared.disconnect();
+			} catch ( RuntimeException e ) {
+				// An unreachable cluster times out here too; don't let that replace the error that got us here
+			}
 		}
 	}
 
