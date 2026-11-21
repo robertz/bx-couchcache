@@ -1,7 +1,7 @@
 /**
  * bx-couchcache
  * The provider is Java and registers itself via ServiceLoader when the module loads.
- * Nothing to wire up here.
+ * The only wiring is onUnload, which closes the module's caches before its class loader goes away.
  */
 class {
 
@@ -17,6 +17,10 @@ class {
 
 	function configure(){
 		settings = {};
+	}
+
+	function onUnload(){
+		createObject( "java", "com.kisdigital.couchcache.CouchCacheProvider@couchcache" ).shutdownAll();
 	}
 
 }

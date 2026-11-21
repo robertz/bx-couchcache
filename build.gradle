@@ -171,6 +171,8 @@ spotless {
  */
 task createModuleStructure(type: Copy) {
 	mustRunAfter shadowJar, jar
+	// A Copy never removes anything: without this a jar from another version stays in libs and BoxLang may load it instead
+	doFirst { delete 'build/module/libs' }
     from( 'build/libs' ) {
 		include "${project.name}-${version}.jar"
         into 'libs'

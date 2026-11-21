@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import com.couchbase.client.core.deps.org.xbill.DNS.NioClient;
 import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
@@ -175,6 +176,40 @@ public class CouchCacheProvider extends AbstractCacheProvider implements ILockab
 			} catch ( RuntimeException e ) {
 				// An unreachable cluster times out here too; don't let that replace the error that got us here
 			}
+			if ( CLUSTERS.isEmpty() ) {
+				stopDnsClient();
+			}
+		}
+	}
+
+	/**
+	 * BoxLang closes a module's class loader before it shuts down the caches, so the module calls this
+	 * from onUnload, while the SDK's classes can still be loaded.
+	 */
+	public static void shutdownAll() {
+		CacheService cacheService = BoxRuntime.getInstance().getCacheService();
+		for ( Object name : cacheService.getRegisteredCaches() ) {
+			Key cacheName = Key.of( name.toString() );
+			if ( cacheService.getCache( cacheName ) instanceof CouchCacheProvider ) {
+				cacheService.shutdownCache( cacheName );
+			}
+		}
+	}
+
+	/**
+	 * The SDK's DNS client (started by the SRV lookup for a plain couchbase://host) never stops by itself: it leaves a
+	 * JVM shutdown hook that runs after BoxLang has closed our class loader, and fails there.
+	 * close() removes the hook, but logs a warning if the client was never started, hence the check.
+	 */
+	private static void stopDnsClient() {
+		try {
+			java.lang.reflect.Field hook = NioClient.class.getDeclaredField( "closeThread" );
+			hook.setAccessible( true );
+			if ( hook.get( null ) != null ) {
+				NioClient.close();
+			}
+		} catch ( ReflectiveOperationException | RuntimeException e ) {
+			// Leave it running
 		}
 	}
 

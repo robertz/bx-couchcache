@@ -1,0 +1,17 @@
+// A short-lived script for ScriptExitIntegrationTest: uses a cache and exits with it still registered.
+cacheService().createCache( "trial", "CouchCache", {
+	connectionString : getSystemSetting( "CB_CONNECTION" ),
+	username         : getSystemSetting( "CB_USERNAME" ),
+	password         : getSystemSetting( "CB_PASSWORD" ),
+	bucket           : getSystemSetting( "CB_BUCKET" )
+} )
+
+// The test container is reached by host:port, which skips the DNS SRV lookup a plain couchbase://host does.
+// Do one here, as the SDK would, so the SDK's DNS client is running when the script ends.
+try {
+	createObject( "java", "com.couchbase.client.core.util.DnsSrv@couchcache" ).fromDnsSrv( "localhost", false, false )
+} catch ( any e ) {
+}
+
+cache( "trial" ).set( "script-exit", "ok", 60 )
+println( "VALUE=" & cache( "trial" ).get( "script-exit" ).get() )

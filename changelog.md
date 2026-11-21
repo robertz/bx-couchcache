@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-21
+
+### Fixed
+
+* A script that ended with a cache still open printed `Exception in thread "dnsjava NIO shutdown hook" ... Class loader [couchcache] is closed`. The module now shuts its caches down when it unloads, and stops the SDK's DNS client with the last connection
+
 ## [0.1.0] - 2026-11-21
 
 ### Added
