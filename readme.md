@@ -2,6 +2,14 @@
 
 A Couchbase cache provider for BoxLang. It covers caching, session storage and `bx:lock` distributed locking. It doesn't do vector memory: if you want that, use Ortus's `bx-couchbase`, which needs a BoxLang+ subscription.
 
+## Install
+
+```
+install-bx-module bx-couchcache
+```
+
+or `box install bx-couchcache`. Needs BoxLang 1.18 or later and Couchbase Server 7.6 or later.
+
 ## Configure
 
 `boxlang.json`:
@@ -106,7 +114,7 @@ Caches with the same connection string, credentials and bucket share one Couchba
 ./gradlew build
 ```
 
-`downloadBoxLang` puts the BoxLang jar in `src/test/resources/libs/`. On the `development` branch (the default when `BRANCH` isn't set) the build uses `boxlang-1.20.0-snapshot.jar`. A sibling `../boxlang` build is used instead if it exists. Run the two commands separately: Gradle refuses to download and compile in one invocation.
+`downloadBoxLang` puts the BoxLang jar (`boxlang-1.19.0.jar`, from `boxlangVersion` in `gradle.properties`) in `src/test/resources/libs/`. A sibling `../boxlang` build is used instead if it exists. Without `BRANCH` set the module is built as a `-snapshot` version; `BRANCH=main ./gradlew build` builds the release version. Run the two commands separately: Gradle refuses to download and compile in one invocation.
 
 The build pins Couchbase Java SDK 3.13.1. The module jar bundles the SDK; its Netty and Jackson are relocated under `com.couchbase.client.core.deps`.
 

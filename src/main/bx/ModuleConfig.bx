@@ -9,7 +9,7 @@ class {
 	property name="boxRuntime";
 	property name="log";
 
-	this.version     = "@build.version@+@build.number@";
+	this.version     = "@build.version@";
 	this.mapping     = "couchcache";
 	this.author      = "Robert";
 	this.description = "Open-source Couchbase cache provider for BoxLang";

@@ -146,10 +146,8 @@ public class TwoJvmIntegrationTest extends BaseIntegrationTest {
 	}
 
 	private static Process start( Path appDir, String name, int port ) throws Exception {
-		File			jar		= Stream.of( new File( "src/test/resources/libs" ).listFiles() )
-		    .filter( f -> f.getName().startsWith( "boxlang-" ) && f.getName().endsWith( ".jar" ) )
-		    .findFirst()
-		    .get();
+		// The same BoxLang jar this test is running on
+		File			jar		= new File( ortus.boxlang.runtime.BoxRuntime.class.getProtectionDomain().getCodeSource().getLocation().toURI() );
 		ProcessBuilder	builder	= new ProcessBuilder(
 		    Path.of( System.getProperty( "java.home" ), "bin", "java" ).toString(), "-jar", jar.getAbsolutePath(), "server.bxs" );
 		builder.directory( appDir.toFile() );

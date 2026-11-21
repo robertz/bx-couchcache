@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-21
+
 ### Added
 
 * First iteration of this module: `CouchCache` cache provider with session storage and `bx:lock` distributed locking
@@ -21,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+* Minimum BoxLang version is 1.18.0; the module is built and tested against BoxLang 1.19.0
 * Caches with the same connection string, credentials and bucket share one Couchbase connection
 * Range scans use the KV timeout instead of the SDK's 75 second default
 * `set()` only does its insert-or-update lookup when an interceptor listens for those events
@@ -30,4 +33,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 * A cache that failed to start left its Couchbase connection open and retrying in the background
+* A cache pointed at an unreachable host reported a disconnect timeout instead of the connection failure
 * Lock expiry under one second threw `InvalidArgumentException`. Lock TTLs are now rounded up to whole seconds.

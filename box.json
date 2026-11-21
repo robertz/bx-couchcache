@@ -1,8 +1,8 @@
 {
 	"name": "BoxLang Couchbase Cache",
-	"version": "@build.version@+@build.number@",
-	"location": "https://downloads.ortussolutions.com/ortussolutions/boxlang-modules/bx-couchcache/@build.version@/bx-couchcache-@build.version@.zip",
-	"author": "Robert",
+	"version": "@build.version@",
+	"location": "forgeboxStorage",
+	"author": "Robert Zehnder",
 	"homepage": "https://github.com/robertz/bx-couchcache",
 	"documentation": "https://github.com/robertz/bx-couchcache#readme",
 	"repository": {
