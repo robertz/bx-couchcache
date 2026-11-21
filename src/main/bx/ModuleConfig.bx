@@ -1,0 +1,22 @@
+/**
+ * bx-couchcache
+ * The provider is Java and registers itself via ServiceLoader when the module loads.
+ * Nothing to wire up here.
+ */
+class {
+
+	property name="moduleRecord";
+	property name="boxRuntime";
+	property name="log";
+
+	this.version     = "@build.version@+@build.number@";
+	this.mapping     = "couchcache";
+	this.author      = "Robert";
+	this.description = "Open-source Couchbase cache provider for BoxLang";
+	this.enabled     = true;
+
+	function configure(){
+		settings = {};
+	}
+
+}

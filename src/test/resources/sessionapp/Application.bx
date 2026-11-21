@@ -1,0 +1,8 @@
+class {
+
+	this.name              = "couchSessionApp";
+	this.sessionManagement = true;
+	this.sessionStorage    = "couchSessions";
+	this.sessionTimeout    = createTimeSpan( 0, 0, 10, 0 );
+
+}

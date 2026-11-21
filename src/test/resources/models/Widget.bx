@@ -1,0 +1,14 @@
+class {
+
+	property name="label";
+
+	function init( required string label ){
+		variables.label = arguments.label;
+		return this;
+	}
+
+	function greet(){
+		return "widget:" & variables.label;
+	}
+
+}

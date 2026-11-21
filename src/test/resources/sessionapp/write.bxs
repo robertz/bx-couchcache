@@ -1,0 +1,2 @@
+session.cart = { "owner" : "rob", "items" : [ 1, 2, 3 ] };
+request.written = true;
